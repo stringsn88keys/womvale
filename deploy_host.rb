@@ -84,7 +84,8 @@ remodown(0644, etc_passwd, conf_filename)
 # Create subdirs and set permissions
 [
   File.join('/var/www/html/', DOMAIN),
-  File.join('/var/www/html/', DOMAIN, 'logs')
+  File.join('/var/www/html/', DOMAIN, 'logs'),
+  File.join('/var/www/html/', DOMAIN, 'public_html')
 ].each do |dir_path|
   Dir.mkdir(dir_path) unless Dir.exists?(dir_path)
   remodown(0755, etc_passwd, dir_path)
@@ -102,33 +103,21 @@ CREATE USER '#{username}' IDENTIFIED BY '#{password}';
 GRANT ALL PRIVILEGES ON #{database_name}.* TO '#{username}';
 DBSTRING
 
+
+mysql_invoke_string=ENV['MYSQLPASSWORD'] ? "mysql -u root -p'#{ENV['MYSQLPASSWORD']}'" : "mysql -u root"
+
 # need to either pass the password or change to trusted root?
 # pass the password with mysql -pP455w0rd (no space between)
-IO.popen("mysql", mode="w+") do |io|
+IO.popen(mysql_invoke_string, mode="w+") do |io|
   io.puts db_string
   io.close_write
+  puts io.read
 end
 
-# change wp-config.php for the DB setup
-# // ** MySQL settings – You can get this info from your web host ** //
-# /** The name of the database for WordPress */
-# define('DB_NAME', 'wp_example_com');
-#
-# /** MySQL database username */
-# define('DB_USER', 'examplecom');
-#
-# /** MySQL database password */
-# define('DB_PASSWORD', '!@(87P@ss');
-#
-# /** MySQL hostname */
-# define('DB_HOST', 'localhost');
-#
-
-# Enable the site
-
+public_html=File.join('/var/www/html', DOMAIN, 'public_html')
 
 `
-  cd /var/www/html/#{DOMAIN}/public_html
+  cd #{public_html}
   wget https://wordpress.org/latest.tar.gz
   # curl https://wordpress.org/latest.tar.gz --output latest.tar.gz
   tar zxvf latest.tar.gz
@@ -138,7 +127,7 @@ end
   rm -rf wordpress
 `
 
-config_sample=File.open('wp-config-sample.php').read
+config_sample=File.open(File.join(public_html, 'wp-config-sample.php')).read
 
 def set_secrets(string, key_name, secret)
   string.gsub(
@@ -156,24 +145,9 @@ config = keys.inject(config) do |config, key|
   set_secrets(config, key, SecureRandom::hex(16))
 end
 
-File.open('wp-config.php', 'w') do |f|
+File.open(File.join(public_html,'wp-config.php'), 'w') do |f|
   f.puts config
 end
-
-# change wp-config.php for the DB setup
-# // ** MySQL settings – You can get this info from your web host ** //
-# /** The name of the database for WordPress */
-# define('DB_NAME', 'wp_example_com');
-#
-# /** MySQL database username */
-# define('DB_USER', 'examplecom');
-#
-# /** MySQL database password */
-# define('DB_PASSWORD', '!@(87P@ss');
-#
-# /** MySQL hostname */
-# define('DB_HOST', 'localhost');
-#
 
 letsencryptupdate='/usr/local/sbin/letsencryptupdate.sh'
 
