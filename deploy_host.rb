@@ -17,7 +17,7 @@ DOMAIN=ARGV[0]
 USER=ARGV[1]
 etc_passwd=Etc.getpwnam(USER)
 
-`sudo apt-get install -y apache2 mysql-client mysql-server`
+# `sudo apt-get install -y apache2 mysql-client mysql-server`
 
 http_template=<<-HTTP_TEMPLATE
 <Directory /var/www/html/<%= DOMAIN %>/public_html>
@@ -136,7 +136,7 @@ def set_secrets(string, key_name, secret)
   )
 end
 
-config = set_secrets(config, 'DB_NAME', database_name)
+config = set_secrets(config_sample, 'DB_NAME', database_name)
 config = set_secrets(config, 'DB_USER', username)
 config = set_secrets(config, 'DB_PASSWORD', password)
 
@@ -151,7 +151,8 @@ end
 
 letsencryptupdate='/usr/local/sbin/letsencryptupdate.sh'
 
-`./letsencrypt-auto certonly -d #{DOMAIN}`
+# FIXME: this method takes user input!
+`/opt/letsencrypt/letsencrypt-auto certonly -d #{DOMAIN}`
 
 conf_file=ERB.new(https_template)
 conf_filename=File.join('/etc/apache2/sites-available', "#{DOMAIN}.conf")
@@ -170,3 +171,12 @@ File.open(letsencryptupdate, 'w') do |f|
 end
 
 reload_apache
+
+# also in /etc/apache/apache2.conf
+#<Directory /home/#{DOMAIN}/public_html/>
+#        Options Indexes FollowSymLinks
+#        AllowOverride All
+#        Require all granted
+#</Directory>
+
+
